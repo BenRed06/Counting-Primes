@@ -3,39 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prime Speed Dashboard</title>
+    <title>Prime Turbo Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: #fff; padding: 20px; display: flex; flex-direction: column; align-items: center; }
         
-        /* Layout Grid for the top stats */
         .stats-container { 
-            display: flex; 
-            gap: 20px; 
-            width: 100%; 
-            max-width: 900px; 
-            justify-content: center; 
-            flex-wrap: wrap; 
-            margin-bottom: 20px;
+            display: flex; gap: 20px; width: 100%; max-width: 1000px; 
+            justify-content: center; flex-wrap: wrap; margin-bottom: 20px;
         }
 
         .card { 
-            background: #2d2d2d; 
-            padding: 20px; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
-            text-align: center; 
-            flex: 1; 
-            min-width: 250px;
+            background: #2d2d2d; padding: 20px; border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; 
+            flex: 1; min-width: 220px;
         }
 
-        h1 { margin: 0 0 10px 0; font-size: 1.2rem; color: #aaa; }
+        h1 { margin: 0 0 10px 0; font-size: 1.1rem; color: #aaa; }
         .big-number { font-size: 2.5rem; font-weight: bold; color: #4CAF50; word-break: break-all; line-height: 1.1;}
-        .label { font-size: 0.9rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px;}
+        .label { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px;}
+        .sub-text { font-size: 0.8rem; color: #666; margin-top: 5px; }
+
+        #chart-container { position: relative; height: 350px; width: 100%; max-width: 1000px; margin-top: 10px; }
         
-        #chart-container { position: relative; height: 350px; width: 100%; max-width: 900px; margin-top: 10px; }
-        
-        button { padding: 10px 20px; font-size: 1rem; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; margin-top: 15px; width: 100%; }
+        button { padding: 10px 20px; font-size: 1rem; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; margin-top: 15px; width: 100%; font-weight: bold; }
         button:hover { background: #45a049; }
         button.stop { background: #f44336; }
         button.stop:hover { background: #d32f2f; }
@@ -44,6 +35,12 @@
 <body>
 
     <div class="stats-container">
+        <div class="card">
+            <h1>Active Threads</h1>
+            <div id="threadCount" class="big-number" style="color: #ff9800;">0</div>
+            <div class="label">CPU Cores Engaged</div>
+        </div>
+
         <div class="card">
             <h1>Primes Found</h1>
             <div id="totalPrimes" class="big-number">0</div>
@@ -60,7 +57,7 @@
             <h1>Current Velocity</h1>
             <div id="speed" class="big-number">0</div>
             <div class="label">Primes / Second</div>
-            <button id="toggleBtn" onclick="toggleWorker()">Start Calculation</button>
+            <button id="toggleBtn" onclick="toggleWorkers()">ENGAGE TURBO MODE</button>
         </div>
     </div>
 
@@ -70,10 +67,16 @@
 
     <script>
         // --- CONFIGURATION ---
-        let worker;
+        let workers = [];
         let isRunning = false;
-        let lastTotal = 0;
+        let lastGlobalTotal = 0;
         let chart;
+        
+        // Use logical processors or default to 4 if API fails
+        const CORE_COUNT = navigator.hardwareConcurrency || 4;
+        
+        // Store stats for each worker individually so we can sum them up
+        let workerStats = new Array(CORE_COUNT).fill(null).map(() => ({ count: 0, highest: 0 }));
 
         // --- CHART SETUP ---
         const ctx = document.getElementById('speedChart').getContext('2d');
@@ -82,10 +85,10 @@
             data: {
                 labels: [],
                 datasets: [{
-                    label: 'Calculation Speed (Primes/Sec)',
+                    label: 'Total Speed (Primes/Sec)',
                     data: [],
-                    borderColor: '#4CAF50',
-                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                    borderColor: '#ff9800', // Orange for Turbo Mode
+                    backgroundColor: 'rgba(255, 152, 0, 0.1)',
                     borderWidth: 2,
                     pointRadius: 0,
                     tension: 0.4, 
@@ -96,58 +99,59 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    x: { 
-                        display: true, // Show X Axis
-                        ticks: { 
-                            maxTicksLimit: 8, // Limit labels to prevent crowding
-                            color: '#888'
-                        },
-                        grid: { color: '#333' }
-                    }, 
-                    y: { 
-                        beginAtZero: true,
-                        grid: { color: '#333' },
-                        ticks: { color: '#888' }
-                    }
+                    x: { display: true, ticks: { maxTicksLimit: 8, color: '#888' }, grid: { color: '#333' } }, 
+                    y: { beginAtZero: true, grid: { color: '#333' }, ticks: { color: '#888' } }
                 },
-                plugins: { legend: { display: false } }
+                plugins: { legend: { display: false } },
+                animation: false // Disable animation for performance
             }
         });
 
         // --- WEB WORKER CODE ---
         const workerCode = `
-            let currentNum = 2;
+            let currentNum = 0;
+            let stride = 1;
             let primesFound = 0;
             let lastPrime = 0;
 
             function isPrime(num) {
-                for (let i = 2, s = Math.sqrt(num); i <= s; i++) {
+                if (num < 2) return false;
+                if (num === 2) return true;
+                if (num % 2 === 0) return false;
+                for (let i = 3, s = Math.sqrt(num); i <= s; i += 2) {
                     if (num % i === 0) return false;
                 }
                 return true;
             }
 
             self.onmessage = function(e) {
-                if (e.data === 'start') {
+                const data = e.data;
+                
+                if (data.command === 'start') {
+                    // Set up the striding logic
+                    // Example: if ID=0 and Stride=4, check 1, 5, 9...
+                    // We start at data.id + 1 to avoid 0
+                    currentNum = data.id + 1; 
+                    stride = data.stride;
+
                     setInterval(() => {
-                        const batchSize = 1000; 
+                        const batchSize = 2000; 
                         
-                        // Calculate batch
                         for(let i=0; i<batchSize; i++) {
                             if(isPrime(currentNum)) {
                                 primesFound++;
                                 lastPrime = currentNum;
                             }
-                            currentNum++;
+                            currentNum += stride;
                         }
                         
-                        // Send object back to main thread
                         self.postMessage({
+                            workerId: data.id,
                             count: primesFound,
                             highest: lastPrime
                         });
 
-                    }, 1); 
+                    }, 5); 
                 }
             };
         `;
@@ -155,44 +159,68 @@
         const blob = new Blob([workerCode], { type: "application/javascript" });
         const workerUrl = URL.createObjectURL(blob);
 
-        function toggleWorker() {
+        function toggleWorkers() {
             const btn = document.getElementById('toggleBtn');
+            const threadDisplay = document.getElementById('threadCount');
             
             if (isRunning) {
-                worker.terminate();
+                // STOP ALL WORKERS
+                workers.forEach(w => w.terminate());
+                workers = [];
                 isRunning = false;
-                btn.innerText = "Start Calculation";
+                btn.innerText = "ENGAGE TURBO MODE";
                 btn.classList.remove('stop');
+                threadDisplay.innerText = "0";
+                threadDisplay.style.color = "#666";
             } else {
-                worker = new Worker(workerUrl);
+                // START ALL WORKERS
+                workerStats = new Array(CORE_COUNT).fill(null).map(() => ({ count: 0, highest: 0 }));
+                lastGlobalTotal = 0;
                 
-                // Handle messages from worker
-                worker.onmessage = function(e) {
-                    const data = e.data;
-                    
-                    // Update DOM elements
-                    document.getElementById('totalPrimes').innerText = data.count.toLocaleString();
-                    document.getElementById('highestPrime').innerText = data.highest.toLocaleString();
-                    
-                    // Store for speed calculation
-                    window.currentTotal = data.count; 
-                };
-                
-                worker.postMessage('start');
+                for(let i = 0; i < CORE_COUNT; i++) {
+                    const w = new Worker(workerUrl);
+                    w.onmessage = handleWorkerMessage;
+                    w.postMessage({ command: 'start', id: i, stride: CORE_COUNT });
+                    workers.push(w);
+                }
+
                 isRunning = true;
-                btn.innerText = "Stop Calculation";
+                btn.innerText = "STOP TURBO MODE";
                 btn.classList.add('stop');
+                threadDisplay.innerText = CORE_COUNT;
+                threadDisplay.style.color = "#ff9800";
             }
         }
 
-        // --- THE SPEEDOMETER LOOP (1 Second Tick) ---
-        setInterval(() => {
-            if (!isRunning || !window.currentTotal) return;
+        function handleWorkerMessage(e) {
+            const data = e.data;
+            // Update the specific stats for this worker
+            workerStats[data.workerId] = { count: data.count, highest: data.highest };
+            
+            // Aggregate totals from all workers
+            let totalCount = 0;
+            let globalMax = 0;
+            
+            workerStats.forEach(stat => {
+                totalCount += stat.count;
+                if(stat.highest > globalMax) globalMax = stat.highest;
+            });
 
-            const currentTotal = window.currentTotal;
-            // Calculate delta
-            const primesPerSec = currentTotal - lastTotal;
-            lastTotal = currentTotal;
+            // Update DOM (Total & Max)
+            document.getElementById('totalPrimes').innerText = totalCount.toLocaleString();
+            document.getElementById('highestPrime').innerText = globalMax.toLocaleString();
+            
+            // Store global total for the speedometer
+            window.currentGlobalTotal = totalCount;
+        }
+
+        // --- SPEEDOMETER LOOP ---
+        setInterval(() => {
+            if (!isRunning || typeof window.currentGlobalTotal === 'undefined') return;
+
+            const currentTotal = window.currentGlobalTotal;
+            const primesPerSec = currentTotal - lastGlobalTotal;
+            lastGlobalTotal = currentTotal;
 
             // Update Speed Display
             document.getElementById('speed').innerText = primesPerSec.toLocaleString();
