@@ -3,236 +3,470 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prime Turbo Dashboard</title>
+    <title>PrimeNode Analytics (Full Width)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: #fff; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        
-        .stats-container { 
-            display: flex; gap: 20px; width: 100%; max-width: 1000px; 
-            justify-content: center; flex-wrap: wrap; margin-bottom: 20px;
+        :root {
+            --bg-body: #0f172a;       
+            --bg-panel: #1e293b;      
+            --border-color: #334155;  
+            --text-main: #f8fafc;     
+            --text-muted: #94a3b8;    
+            --accent: #6366f1;        
+            --accent-hover: #4f46e5;
+            --success: #10b981;       
+            --danger: #ef4444;        
         }
 
-        .card { 
-            background: #2d2d2d; padding: 20px; border-radius: 12px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; 
-            flex: 1; min-width: 220px;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow-y: auto;
         }
 
-        h1 { margin: 0 0 10px 0; font-size: 1.1rem; color: #aaa; }
-        .big-number { font-size: 2.5rem; font-weight: bold; color: #4CAF50; word-break: break-all; line-height: 1.1;}
-        .label { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px;}
-        .sub-text { font-size: 0.8rem; color: #666; margin-top: 5px; }
+        /* --- HEADER --- */
+        .header {
+            padding: 0 40px;
+            height: 70px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--bg-body);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
 
-        #chart-container { position: relative; height: 350px; width: 100%; max-width: 1000px; margin-top: 10px; }
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo span { color: var(--accent); }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .status-pill {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(148, 163, 184, 0.1);
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #666; }
+        .status-pill.running .dot { background: var(--success); box-shadow: 0 0 8px var(--success); }
+        .status-pill.running { border-color: rgba(16, 185, 129, 0.3); color: var(--success); }
+
+        /* CPU Settings Popover style in Header */
+        .cpu-control {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: var(--bg-panel);
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .cpu-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+        .range-wrap { width: 100px; display: flex; align-items: center; }
         
-        button { padding: 10px 20px; font-size: 1rem; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; margin-top: 15px; width: 100%; font-weight: bold; }
-        button:hover { background: #45a049; }
-        button.stop { background: #f44336; }
-        button.stop:hover { background: #d32f2f; }
+        input[type=range] {
+            width: 100%;
+            height: 6px;
+            background: #334155;
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: var(--text-main);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.1);
+        }
+
+        /* --- CONTENT --- */
+        .content { padding: 40px; max-width: 1600px; width: 100%; margin: 0 auto; }
+        
+        .page-title { margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
+        .page-title h2 { font-size: 1.5rem; font-weight: 600; }
+
+        .btn-primary {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.9rem;
+        }
+        .btn-primary:hover { background-color: var(--accent-hover); }
+        .btn-danger { background-color: var(--danger); }
+        .btn-danger:hover { background-color: #dc2626; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .metric-label { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 500; }
+        .metric-value { font-size: 2rem; font-weight: 600; color: white; letter-spacing: -0.5px; }
+        .metric-sub { font-size: 0.8rem; color: var(--success); margin-top: 8px; display: flex; align-items: center; gap: 4px; }
+
+        /* Chart Section */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr; /* Stacked layout */
+            gap: 24px;
+            padding-bottom: 40px;
+        }
+        
+        .chart-card {
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            height: 350px;
+            position: relative;
+        }
+        
+        .chart-header {
+            position: absolute; 
+            top: 20px; 
+            left: 24px; 
+            font-weight: 600; 
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
 
-    <div class="stats-container">
-        <div class="card">
-            <h1>Active Threads</h1>
-            <div id="threadCount" class="big-number" style="color: #ff9800;">0</div>
-            <div class="label">CPU Cores Engaged</div>
+    <div class="header">
+        <div class="logo">
+            <span>⚡</span> PrimeNode Analytics
         </div>
+        
+        <div class="header-controls">
+            <div class="cpu-control">
+                <div class="cpu-label">Threads: <span id="coreDisplay" style="color:white; margin-left:5px;">4</span></div>
+                <div class="range-wrap">
+                    <input type="range" id="coreSlider" min="1" max="4" value="4" onchange="handleThrottleChange()" oninput="updateSliderUI()">
+                </div>
+            </div>
 
-        <div class="card">
-            <h1>Primes Found</h1>
-            <div id="totalPrimes" class="big-number">0</div>
-            <div class="label">Total Count</div>
-        </div>
-
-        <div class="card">
-            <h1>Highest Prime Found</h1>
-            <div id="highestPrime" class="big-number" style="color: #64b5f6;">0</div>
-            <div class="label">Current Max</div>
-        </div>
-
-        <div class="card">
-            <h1>Current Velocity</h1>
-            <div id="speed" class="big-number">0</div>
-            <div class="label">Primes / Second</div>
-            <button id="toggleBtn" onclick="toggleWorkers()">ENGAGE TURBO MODE</button>
+            <div class="status-pill" id="statusPill">
+                <div class="dot"></div>
+                <span id="statusText">IDLE</span>
+            </div>
         </div>
     </div>
 
-    <div id="chart-container">
-        <canvas id="speedChart"></canvas>
+    <div class="content">
+        <div class="page-title">
+            <h2>System Overview</h2>
+            <div>
+                <span id="resetLink" onclick="resetAll()" style="color:var(--text-muted); font-size:0.9rem; margin-right:20px; cursor:pointer; text-decoration:underline;">Reset Data</span>
+                <button id="mainBtn" class="btn-primary" onclick="toggleState()">Start Node</button>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <div class="metric-label">TOTAL PRIMES FOUND</div>
+                <div class="metric-value" id="totalPrimes">0</div>
+                <div class="metric-sub">Session Total</div>
+            </div>
+            <div class="card">
+                <div class="metric-label">CURRENT VELOCITY</div>
+                <div class="metric-value" id="speed">0</div>
+                <div class="metric-sub">Primes / Second</div>
+            </div>
+            <div class="card">
+                <div class="metric-label">HIGHEST PRIME DISCOVERED</div>
+                <div class="metric-value" id="highestPrime" style="font-size: 1.5rem; color: #6366f1;">0</div>
+                <div class="metric-sub">Auto-updates</div>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-header">Throughput Velocity (10Hz Refresh)</div>
+                <div style="height: 100%; width: 100%; padding-top: 30px;">
+                    <canvas id="speedChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-card">
+                <div class="chart-header">Exponential Growth (Highest Prime)</div>
+                <div style="height: 100%; width: 100%; padding-top: 30px;">
+                    <canvas id="growthChart"></canvas>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        // --- CONFIGURATION ---
-        let workers = [];
-        let isRunning = false;
-        let lastGlobalTotal = 0;
-        let chart;
-        
-        // Use logical processors or default to 4 if API fails
-        const CORE_COUNT = navigator.hardwareConcurrency || 4;
-        
-        // Store stats for each worker individually so we can sum them up
-        let workerStats = new Array(CORE_COUNT).fill(null).map(() => ({ count: 0, highest: 0 }));
+        // --- SETUP ---
+        const MAX_CORES = navigator.hardwareConcurrency || 4;
+        const slider = document.getElementById('coreSlider');
+        slider.max = MAX_CORES;
+        slider.value = MAX_CORES;
+        document.getElementById('coreDisplay').innerText = MAX_CORES;
 
-        // --- CHART SETUP ---
-        const ctx = document.getElementById('speedChart').getContext('2d');
-        chart = new Chart(ctx, {
+        // --- STATE ---
+        let workers = [];
+        let state = 'IDLE'; 
+        let totalPrimesBanked = 0; 
+        let highestPrimeAllTime = 0;
+        let lastGlobalTotal = 0;
+        let currentSessionTotal = 0;
+        let speedChart, growthChart;
+
+        // --- CHART CONFIG ---
+        Chart.defaults.color = '#64748b';
+        Chart.defaults.borderColor = '#334155';
+        
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                x: { grid: { display: false }, ticks: { display: false } }, 
+                y: { beginAtZero: true, border: { display: false } }
+            },
+            plugins: { legend: { display: false } },
+            animation: false, 
+            elements: { point: { radius: 0 } }
+        };
+
+        // Initialize Speed Chart (Indigo)
+        const ctxSpeed = document.getElementById('speedChart').getContext('2d');
+        const gradSpeed = ctxSpeed.createLinearGradient(0, 0, 0, 400);
+        gradSpeed.addColorStop(0, 'rgba(99, 102, 241, 0.5)'); 
+        gradSpeed.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
+
+        speedChart = new Chart(ctxSpeed, {
             type: 'line',
             data: {
                 labels: [],
                 datasets: [{
-                    label: 'Total Speed (Primes/Sec)',
+                    label: 'Calculations / Sec',
                     data: [],
-                    borderColor: '#ff9800', // Orange for Turbo Mode
-                    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                    borderColor: '#6366f1',
+                    backgroundColor: gradSpeed,
                     borderWidth: 2,
-                    pointRadius: 0,
-                    tension: 0.4, 
+                    tension: 0.2, 
                     fill: true
                 }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: { display: true, ticks: { maxTicksLimit: 8, color: '#888' }, grid: { color: '#333' } }, 
-                    y: { beginAtZero: true, grid: { color: '#333' }, ticks: { color: '#888' } }
-                },
-                plugins: { legend: { display: false } },
-                animation: false // Disable animation for performance
-            }
+            options: commonOptions
         });
 
-        // --- WEB WORKER CODE ---
+        // Initialize Growth Chart (Emerald)
+        const ctxGrowth = document.getElementById('growthChart').getContext('2d');
+        const gradGrowth = ctxGrowth.createLinearGradient(0, 0, 0, 400);
+        gradGrowth.addColorStop(0, 'rgba(16, 185, 129, 0.5)'); 
+        gradGrowth.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+
+        growthChart = new Chart(ctxGrowth, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Highest Prime',
+                    data: [],
+                    borderColor: '#10b981',
+                    backgroundColor: gradGrowth,
+                    borderWidth: 2,
+                    tension: 0.2, 
+                    fill: true
+                }]
+            },
+            options: commonOptions
+        });
+
+        // --- WORKER BLOB ---
         const workerCode = `
-            let currentNum = 0;
-            let stride = 1;
-            let primesFound = 0;
-            let lastPrime = 0;
-
-            function isPrime(num) {
-                if (num < 2) return false;
-                if (num === 2) return true;
-                if (num % 2 === 0) return false;
-                for (let i = 3, s = Math.sqrt(num); i <= s; i += 2) {
-                    if (num % i === 0) return false;
-                }
-                return true;
-            }
-
             self.onmessage = function(e) {
-                const data = e.data;
-                
-                if (data.command === 'start') {
-                    // Set up the striding logic
-                    // Example: if ID=0 and Stride=4, check 1, 5, 9...
-                    // We start at data.id + 1 to avoid 0
-                    currentNum = data.id + 1; 
-                    stride = data.stride;
+                if (e.data.command === 'start') {
+                    let currentNum = e.data.id + 1; 
+                    let stride = e.data.stride;
+                    let count = 0;
+                    let maxFound = 0;
+
+                    const isPrime = (num) => {
+                        if (num < 2) return false;
+                        if (num === 2) return true;
+                        if (num % 2 === 0) return false;
+                        for (let i = 3, s = Math.sqrt(num); i <= s; i += 2) {
+                            if (num % i === 0) return false;
+                        }
+                        return true;
+                    };
 
                     setInterval(() => {
-                        const batchSize = 2000; 
-                        
-                        for(let i=0; i<batchSize; i++) {
+                        for(let i=0; i<500; i++) {
                             if(isPrime(currentNum)) {
-                                primesFound++;
-                                lastPrime = currentNum;
+                                count++;
+                                maxFound = currentNum;
                             }
                             currentNum += stride;
                         }
-                        
-                        self.postMessage({
-                            workerId: data.id,
-                            count: primesFound,
-                            highest: lastPrime
-                        });
-
+                        self.postMessage({ count, highest: maxFound });
                     }, 5); 
                 }
             };
         `;
-
         const blob = new Blob([workerCode], { type: "application/javascript" });
         const workerUrl = URL.createObjectURL(blob);
 
-        function toggleWorkers() {
-            const btn = document.getElementById('toggleBtn');
-            const threadDisplay = document.getElementById('threadCount');
-            
-            if (isRunning) {
-                // STOP ALL WORKERS
-                workers.forEach(w => w.terminate());
-                workers = [];
-                isRunning = false;
-                btn.innerText = "ENGAGE TURBO MODE";
-                btn.classList.remove('stop');
-                threadDisplay.innerText = "0";
-                threadDisplay.style.color = "#666";
-            } else {
-                // START ALL WORKERS
-                workerStats = new Array(CORE_COUNT).fill(null).map(() => ({ count: 0, highest: 0 }));
-                lastGlobalTotal = 0;
-                
-                for(let i = 0; i < CORE_COUNT; i++) {
-                    const w = new Worker(workerUrl);
-                    w.onmessage = handleWorkerMessage;
-                    w.postMessage({ command: 'start', id: i, stride: CORE_COUNT });
-                    workers.push(w);
-                }
+        // --- UI FUNCTIONS ---
+        function updateSliderUI() {
+            document.getElementById('coreDisplay').innerText = slider.value;
+        }
 
-                isRunning = true;
-                btn.innerText = "STOP TURBO MODE";
-                btn.classList.add('stop');
-                threadDisplay.innerText = CORE_COUNT;
-                threadDisplay.style.color = "#ff9800";
+        function toggleState() {
+            const btn = document.getElementById('mainBtn');
+            const pill = document.getElementById('statusPill');
+            const statusText = document.getElementById('statusText');
+
+            if (state === 'IDLE' || state === 'PAUSED') {
+                state = 'RUNNING';
+                startWorkers();
+                btn.innerText = "Pause Node";
+                btn.className = "btn-primary btn-danger"; 
+                pill.classList.add('running');
+                statusText.innerText = "RUNNING";
+            } else {
+                state = 'PAUSED';
+                stopWorkers(false);
+                btn.innerText = "Resume Node";
+                btn.className = "btn-primary";
+                pill.classList.remove('running');
+                statusText.innerText = "PAUSED";
             }
         }
 
-        function handleWorkerMessage(e) {
-            const data = e.data;
-            // Update the specific stats for this worker
-            workerStats[data.workerId] = { count: data.count, highest: data.highest };
-            
-            // Aggregate totals from all workers
-            let totalCount = 0;
-            let globalMax = 0;
-            
-            workerStats.forEach(stat => {
-                totalCount += stat.count;
-                if(stat.highest > globalMax) globalMax = stat.highest;
-            });
-
-            // Update DOM (Total & Max)
-            document.getElementById('totalPrimes').innerText = totalCount.toLocaleString();
-            document.getElementById('highestPrime').innerText = globalMax.toLocaleString();
-            
-            // Store global total for the speedometer
-            window.currentGlobalTotal = totalCount;
+        function handleThrottleChange() {
+            if (state === 'RUNNING') {
+                stopWorkers(false);
+                startWorkers();
+            }
         }
 
-        // --- SPEEDOMETER LOOP ---
+        function startWorkers() {
+            const coreCount = parseInt(slider.value);
+            currentSessionTotal = 0; 
+            window.activeWorkerStats = new Array(coreCount).fill(0);
+
+            for (let i = 0; i < coreCount; i++) {
+                const w = new Worker(workerUrl);
+                w.onmessage = (e) => {
+                    window.activeWorkerStats[i] = e.data.count;
+                    if(e.data.highest > highestPrimeAllTime) {
+                        highestPrimeAllTime = e.data.highest;
+                        document.getElementById('highestPrime').innerText = highestPrimeAllTime.toLocaleString();
+                    }
+                    currentSessionTotal = window.activeWorkerStats.reduce((a, b) => a + b, 0);
+                    document.getElementById('totalPrimes').innerText = (totalPrimesBanked + currentSessionTotal).toLocaleString();
+                };
+                w.postMessage({ command: 'start', id: i, stride: coreCount });
+                workers.push(w);
+            }
+        }
+
+        function stopWorkers(resetBank) {
+            workers.forEach(w => w.terminate());
+            workers = [];
+            if (resetBank) totalPrimesBanked = 0;
+            else totalPrimesBanked += currentSessionTotal;
+            currentSessionTotal = 0;
+        }
+
+        function resetAll() {
+            stopWorkers(true);
+            state = 'IDLE';
+            document.getElementById('mainBtn').innerText = "Start Node";
+            document.getElementById('mainBtn').className = "btn-primary";
+            document.getElementById('statusPill').classList.remove('running');
+            document.getElementById('statusText').innerText = "IDLE";
+            document.getElementById('totalPrimes').innerText = "0";
+            document.getElementById('highestPrime').innerText = "0";
+            document.getElementById('speed').innerText = "0";
+            highestPrimeAllTime = 0;
+            lastGlobalTotal = 0;
+            
+            speedChart.data.labels = [];
+            speedChart.data.datasets[0].data = [];
+            speedChart.update();
+
+            growthChart.data.labels = [];
+            growthChart.data.datasets[0].data = [];
+            growthChart.update();
+        }
+
+        // --- HIGH SPEED METRICS LOOP (100ms) ---
         setInterval(() => {
-            if (!isRunning || typeof window.currentGlobalTotal === 'undefined') return;
+            if (state !== 'RUNNING') {
+                document.getElementById('speed').innerText = "0";
+                return;
+            }
+            const currentGlobal = totalPrimesBanked + currentSessionTotal;
+            
+            const delta = currentGlobal - lastGlobalTotal;
+            lastGlobalTotal = currentGlobal;
 
-            const currentTotal = window.currentGlobalTotal;
-            const primesPerSec = currentTotal - lastGlobalTotal;
-            lastGlobalTotal = currentTotal;
+            const velocity = delta * 10; // Project to "Per Second"
 
-            // Update Speed Display
-            document.getElementById('speed').innerText = primesPerSec.toLocaleString();
+            document.getElementById('speed').innerText = velocity.toLocaleString();
 
-            // Update Chart
-            const now = new Date().toLocaleTimeString();
-            chart.data.labels.push(now);
-            chart.data.datasets[0].data.push(primesPerSec);
-            chart.update();
+            const now = ""; 
+            
+            speedChart.data.labels.push(now);
+            speedChart.data.datasets[0].data.push(velocity);
+            
+            growthChart.data.labels.push(now);
+            growthChart.data.datasets[0].data.push(highestPrimeAllTime);
 
-        }, 1000);
+            speedChart.update();
+            growthChart.update();
 
+        }, 100); 
     </script>
 </body>
 </html>
