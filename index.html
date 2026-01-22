@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PrimeNode Analytics (Exponential)</title>
+    <title>PrimeNode Analytics (Smooth Decay)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -140,7 +140,7 @@
 
         <div class="charts-grid">
             <div class="chart-card">
-                <div class="chart-header">Throughput Velocity (Exponential Decay)</div>
+                <div class="chart-header">Throughput Velocity (Smooth Decay)</div>
                 <div style="height: 100%; width: 100%; padding-top: 30px;">
                     <canvas id="speedChart"></canvas>
                 </div>
@@ -168,7 +168,7 @@
         let lastGlobalTotal = 0;
         let currentSessionTotal = 0;
         let speedChart, growthChart;
-        const MAX_DATA_POINTS = 50; // Keep chart moving, don't squish
+        const MAX_DATA_POINTS = 50; 
 
         Chart.defaults.color = '#64748b';
         Chart.defaults.borderColor = '#334155';
@@ -206,18 +206,18 @@
             options: commonOptions
         });
 
-        // --- OPTIMIZED EXPONENTIAL WORKER ---
+        // --- OPTIMIZED ADAPTIVE WORKER ---
         const workerCode = `
             self.onmessage = function(e) {
                 if (e.data.command === 'start') {
-                    // Start at a reasonably high number to avoid trivial primes
-                    let currentNum = 1000 + e.data.id; 
+                    // Start low to get high initial speed
+                    let currentNum = 100 + e.data.id; 
                     let stride = e.data.stride;
-                    let count = 0;
                     let maxFound = 0;
-                    let lastReport = Date.now();
 
                     const isPrime = (num) => {
+                        if (num < 2) return false;
+                        if (num === 2) return true;
                         if (num % 2 === 0) return false;
                         for (let i = 3, s = Math.sqrt(num); i <= s; i += 2) {
                             if (num % i === 0) return false;
@@ -226,30 +226,30 @@
                     };
 
                     setInterval(() => {
-                         // Batch size
-                         for(let k=0; k<2000; k++) { 
+                         let count = 0;
+                         const startTime = Date.now();
+                         
+                         // TIME BUDGET: Run for exactly 200ms
+                         // This prevents the UI from freezing as calculations get harder
+                         while ((Date.now() - startTime) < 200) {
                             if(isPrime(currentNum)) {
                                 count++;
                                 maxFound = currentNum;
                             }
                             
-                            // --- THE MAGIC ---
-                            // Instead of linear addition (currentNum += stride),
-                            // We add a tiny compound growth factor.
-                            // This makes currentNum explode in size over time.
-                            // As currentNum grows, isPrime() gets slower (Velocity drops).
-                            // As currentNum grows, MaxFound gets larger (Value rises).
+                            // --- TUNED GROWTH FACTOR ---
+                            // 0.00000005 is gentle enough to see the curve 
+                            // but strong enough to decay velocity over ~1 minute.
+                            let growth = Math.floor(currentNum * 0.00000005); 
                             
-                            let growth = Math.floor(currentNum * 0.0000005); 
+                            // Ensure we always move forward at least by stride
                             currentNum += (stride + growth);
                          }
                          
-                         const now = Date.now();
-                         if (now - lastReport > 250) {
-                             self.postMessage({ count, highest: maxFound });
-                             lastReport = now;
-                         }
-                    }, 0); 
+                         // Report whatever we found in that 200ms slice
+                         self.postMessage({ count, highest: maxFound });
+
+                    }, 200); // Check-in interval
                 }
             };
         `;
@@ -290,10 +290,11 @@
             for (let i = 0; i < coreCount; i++) {
                 const w = new Worker(workerUrl);
                 w.onmessage = (e) => {
-                    window.activeWorkerStats[i] = e.data.count;
+                    // Accumulate count from this specific message
+                    window.activeWorkerStats[i] += e.data.count;
+                    
                     if(e.data.highest > highestPrimeAllTime) highestPrimeAllTime = e.data.highest;
                     
-                    // Sum up total from all workers
                     currentSessionTotal = window.activeWorkerStats.reduce((a, b) => a + b, 0);
                     
                     document.getElementById('totalPrimes').innerText = (totalPrimesBanked + currentSessionTotal).toLocaleString();
@@ -325,7 +326,6 @@
             highestPrimeAllTime = 0;
             lastGlobalTotal = 0;
             
-            // Clear charts
             speedChart.data.labels = []; speedChart.data.datasets[0].data = []; speedChart.update();
             growthChart.data.labels = []; growthChart.data.datasets[0].data = []; growthChart.update();
         }
