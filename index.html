@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prime Speed Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: #fff; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        
+        /* Layout Grid for the top stats */
+        .stats-container { 
+            display: flex; 
+            gap: 20px; 
+            width: 100%; 
+            max-width: 900px; 
+            justify-content: center; 
+            flex-wrap: wrap; 
+            margin-bottom: 20px;
+        }
+
+        .card { 
+            background: #2d2d2d; 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+            text-align: center; 
+            flex: 1; 
+            min-width: 250px;
+        }
+
+        h1 { margin: 0 0 10px 0; font-size: 1.2rem; color: #aaa; }
+        .big-number { font-size: 2.5rem; font-weight: bold; color: #4CAF50; word-break: break-all; line-height: 1.1;}
+        .label { font-size: 0.9rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px;}
+        
+        #chart-container { position: relative; height: 350px; width: 100%; max-width: 900px; margin-top: 10px; }
+        
+        button { padding: 10px 20px; font-size: 1rem; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; margin-top: 15px; width: 100%; }
+        button:hover { background: #45a049; }
+        button.stop { background: #f44336; }
+        button.stop:hover { background: #d32f2f; }
+    </style>
+</head>
+<body>
+
+    <div class="stats-container">
+        <div class="card">
+            <h1>Primes Found</h1>
+            <div id="totalPrimes" class="big-number">0</div>
+            <div class="label">Total Count</div>
+        </div>
+
+        <div class="card">
+            <h1>Highest Prime Found</h1>
+            <div id="highestPrime" class="big-number" style="color: #64b5f6;">0</div>
+            <div class="label">Current Max</div>
+        </div>
+
+        <div class="card">
+            <h1>Current Velocity</h1>
+            <div id="speed" class="big-number">0</div>
+            <div class="label">Primes / Second</div>
+            <button id="toggleBtn" onclick="toggleWorker()">Start Calculation</button>
+        </div>
+    </div>
+
+    <div id="chart-container">
+        <canvas id="speedChart"></canvas>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        let worker;
+        let isRunning = false;
+        let lastTotal = 0;
+        let chart;
+
+        // --- CHART SETUP ---
+        const ctx = document.getElementById('speedChart').getContext('2d');
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Calculation Speed (Primes/Sec)',
+                    data: [],
+                    borderColor: '#4CAF50',
+                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.4, 
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { 
+                        display: true, // Show X Axis
+                        ticks: { 
+                            maxTicksLimit: 8, // Limit labels to prevent crowding
+                            color: '#888'
+                        },
+                        grid: { color: '#333' }
+                    }, 
+                    y: { 
+                        beginAtZero: true,
+                        grid: { color: '#333' },
+                        ticks: { color: '#888' }
+                    }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // --- WEB WORKER CODE ---
+        const workerCode = `
+            let currentNum = 2;
+            let primesFound = 0;
+            let lastPrime = 0;
+
+            function isPrime(num) {
+                for (let i = 2, s = Math.sqrt(num); i <= s; i++) {
+                    if (num % i === 0) return false;
+                }
+                return true;
+            }
+
+            self.onmessage = function(e) {
+                if (e.data === 'start') {
+                    setInterval(() => {
+                        const batchSize = 1000; 
+                        
+                        // Calculate batch
+                        for(let i=0; i<batchSize; i++) {
+                            if(isPrime(currentNum)) {
+                                primesFound++;
+                                lastPrime = currentNum;
+                            }
+                            currentNum++;
+                        }
+                        
+                        // Send object back to main thread
+                        self.postMessage({
+                            count: primesFound,
+                            highest: lastPrime
+                        });
+
+                    }, 1); 
+                }
+            };
+        `;
+
+        const blob = new Blob([workerCode], { type: "application/javascript" });
+        const workerUrl = URL.createObjectURL(blob);
+
+        function toggleWorker() {
+            const btn = document.getElementById('toggleBtn');
+            
+            if (isRunning) {
+                worker.terminate();
+                isRunning = false;
+                btn.innerText = "Start Calculation";
+                btn.classList.remove('stop');
+            } else {
+                worker = new Worker(workerUrl);
+                
+                // Handle messages from worker
+                worker.onmessage = function(e) {
+                    const data = e.data;
+                    
+                    // Update DOM elements
+                    document.getElementById('totalPrimes').innerText = data.count.toLocaleString();
+                    document.getElementById('highestPrime').innerText = data.highest.toLocaleString();
+                    
+                    // Store for speed calculation
+                    window.currentTotal = data.count; 
+                };
+                
+                worker.postMessage('start');
+                isRunning = true;
+                btn.innerText = "Stop Calculation";
+                btn.classList.add('stop');
+            }
+        }
+
+        // --- THE SPEEDOMETER LOOP (1 Second Tick) ---
+        setInterval(() => {
+            if (!isRunning || !window.currentTotal) return;
+
+            const currentTotal = window.currentTotal;
+            // Calculate delta
+            const primesPerSec = currentTotal - lastTotal;
+            lastTotal = currentTotal;
+
+            // Update Speed Display
+            document.getElementById('speed').innerText = primesPerSec.toLocaleString();
+
+            // Update Chart
+            const now = new Date().toLocaleTimeString();
+            chart.data.labels.push(now);
+            chart.data.datasets[0].data.push(primesPerSec);
+            chart.update();
+
+        }, 1000);
+
+    </script>
+</body>
+</html>
