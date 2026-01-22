@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PrimeNode Analytics (Full Width)</title>
+    <title>PrimeNode Analytics (Exponential)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -44,143 +44,59 @@
             z-index: 50;
         }
 
-        .logo {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: white;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+        .logo { font-size: 1.25rem; font-weight: 700; color: white; display: flex; align-items: center; gap: 10px; }
         .logo span { color: var(--accent); }
 
-        .header-controls {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
+        .header-controls { display: flex; align-items: center; gap: 20px; }
 
         .status-pill {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            background: rgba(148, 163, 184, 0.1);
-            color: var(--text-muted);
-            border: 1px solid var(--border-color);
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+            background: rgba(148, 163, 184, 0.1); color: var(--text-muted);
+            border: 1px solid var(--border-color); display: flex; align-items: center; gap: 6px;
         }
         .dot { width: 8px; height: 8px; border-radius: 50%; background: #666; }
         .status-pill.running .dot { background: var(--success); box-shadow: 0 0 8px var(--success); }
         .status-pill.running { border-color: rgba(16, 185, 129, 0.3); color: var(--success); }
 
-        /* CPU Settings Popover style in Header */
         .cpu-control {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            background: var(--bg-panel);
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
+            display: flex; align-items: center; gap: 15px; background: var(--bg-panel);
+            padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color);
         }
         .cpu-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
         .range-wrap { width: 100px; display: flex; align-items: center; }
         
-        input[type=range] {
-            width: 100%;
-            height: 6px;
-            background: #334155;
-            border-radius: 5px;
-            outline: none;
-            -webkit-appearance: none;
-            cursor: pointer;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 14px;
-            height: 14px;
-            background: var(--text-main);
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 0 2px rgba(255,255,255,0.1);
-        }
+        input[type=range] { width: 100%; height: 6px; background: #334155; border-radius: 5px; outline: none; -webkit-appearance: none; cursor: pointer; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: var(--text-main); border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 2px rgba(255,255,255,0.1); }
 
         /* --- CONTENT --- */
         .content { padding: 40px; max-width: 1600px; width: 100%; margin: 0 auto; }
-        
         .page-title { margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
         .page-title h2 { font-size: 1.5rem; font-weight: 600; }
 
         .btn-primary {
-            background-color: var(--accent);
-            color: white;
-            border: none;
-            padding: 10px 24px;
-            border-radius: 6px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.2s;
-            font-size: 0.9rem;
+            background-color: var(--accent); color: white; border: none; padding: 10px 24px;
+            border-radius: 6px; font-weight: 500; cursor: pointer; transition: background 0.2s; font-size: 0.9rem;
         }
         .btn-primary:hover { background-color: var(--accent-hover); }
         .btn-danger { background-color: var(--danger); }
         .btn-danger:hover { background-color: #dc2626; }
 
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 24px;
-            margin-bottom: 24px;
-        }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; margin-bottom: 24px; }
 
-        .card {
-            background-color: var(--bg-panel);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 24px;
-        }
-
+        .card { background-color: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; }
         .metric-label { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 500; }
         .metric-value { font-size: 2rem; font-weight: 600; color: white; letter-spacing: -0.5px; }
         .metric-sub { font-size: 0.8rem; color: var(--success); margin-top: 8px; display: flex; align-items: center; gap: 4px; }
 
-        /* Chart Section */
-        .charts-grid {
-            display: grid;
-            grid-template-columns: 1fr; /* Stacked layout */
-            gap: 24px;
-            padding-bottom: 40px;
-        }
-        
-        .chart-card {
-            background-color: var(--bg-panel);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 24px;
-            height: 350px;
-            position: relative;
-        }
-        
-        .chart-header {
-            position: absolute; 
-            top: 20px; 
-            left: 24px; 
-            font-weight: 600; 
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
+        .charts-grid { display: grid; grid-template-columns: 1fr; gap: 24px; padding-bottom: 40px; }
+        .chart-card { background-color: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; height: 350px; position: relative; }
+        .chart-header { position: absolute; top: 20px; left: 24px; font-weight: 600; color: var(--text-muted); font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="logo">
-            <span>⚡</span> PrimeNode Analytics
-        </div>
-        
+        <div class="logo"><span>⚡</span> PrimeNode Analytics</div>
         <div class="header-controls">
             <div class="cpu-control">
                 <div class="cpu-label">Threads: <span id="coreDisplay" style="color:white; margin-left:5px;">4</span></div>
@@ -188,7 +104,6 @@
                     <input type="range" id="coreSlider" min="1" max="4" value="4" onchange="handleThrottleChange()" oninput="updateSliderUI()">
                 </div>
             </div>
-
             <div class="status-pill" id="statusPill">
                 <div class="dot"></div>
                 <span id="statusText">IDLE</span>
@@ -207,7 +122,7 @@
 
         <div class="grid">
             <div class="card">
-                <div class="metric-label">TOTAL PRIMES FOUND</div>
+                <div class="metric-label">PRIMES VERIFIED</div>
                 <div class="metric-value" id="totalPrimes">0</div>
                 <div class="metric-sub">Session Total</div>
             </div>
@@ -218,21 +133,20 @@
             </div>
             <div class="card">
                 <div class="metric-label">HIGHEST PRIME DISCOVERED</div>
-                <div class="metric-value" id="highestPrime" style="font-size: 1.5rem; color: #6366f1;">0</div>
+                <div class="metric-value" id="highestPrime" style="font-size: 1.4rem; color: #6366f1; word-break: break-all;">0</div>
                 <div class="metric-sub">Auto-updates</div>
             </div>
         </div>
 
         <div class="charts-grid">
             <div class="chart-card">
-                <div class="chart-header">Throughput Velocity (10Hz Refresh)</div>
+                <div class="chart-header">Throughput Velocity (Exponential Decay)</div>
                 <div style="height: 100%; width: 100%; padding-top: 30px;">
                     <canvas id="speedChart"></canvas>
                 </div>
             </div>
-            
             <div class="chart-card">
-                <div class="chart-header">Exponential Growth (Highest Prime)</div>
+                <div class="chart-header">Highest Prime Magnitude (Exponential Growth)</div>
                 <div style="height: 100%; width: 100%; padding-top: 30px;">
                     <canvas id="growthChart"></canvas>
                 </div>
@@ -241,14 +155,12 @@
     </div>
 
     <script>
-        // --- SETUP ---
         const MAX_CORES = navigator.hardwareConcurrency || 4;
         const slider = document.getElementById('coreSlider');
         slider.max = MAX_CORES;
         slider.value = MAX_CORES;
         document.getElementById('coreDisplay').innerText = MAX_CORES;
 
-        // --- STATE ---
         let workers = [];
         let state = 'IDLE'; 
         let totalPrimesBanked = 0; 
@@ -256,8 +168,8 @@
         let lastGlobalTotal = 0;
         let currentSessionTotal = 0;
         let speedChart, growthChart;
+        const MAX_DATA_POINTS = 50; // Keep chart moving, don't squish
 
-        // --- CHART CONFIG ---
         Chart.defaults.color = '#64748b';
         Chart.defaults.borderColor = '#334155';
         
@@ -265,73 +177,47 @@
             responsive: true,
             maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
-            scales: {
-                x: { grid: { display: false }, ticks: { display: false } }, 
-                y: { beginAtZero: true, border: { display: false } }
+            scales: { 
+                x: { grid: { display: false } }, 
+                y: { beginAtZero: true, border: { display: false }, grid: { color: '#334155' } } 
             },
             plugins: { legend: { display: false } },
-            animation: false, 
-            elements: { point: { radius: 0 } }
+            animation: false,
+            elements: { point: { radius: 0, hoverRadius: 6 } }
         };
 
-        // Initialize Speed Chart (Indigo)
         const ctxSpeed = document.getElementById('speedChart').getContext('2d');
         const gradSpeed = ctxSpeed.createLinearGradient(0, 0, 0, 400);
         gradSpeed.addColorStop(0, 'rgba(99, 102, 241, 0.5)'); 
         gradSpeed.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
-
         speedChart = new Chart(ctxSpeed, {
             type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Calculations / Sec',
-                    data: [],
-                    borderColor: '#6366f1',
-                    backgroundColor: gradSpeed,
-                    borderWidth: 2,
-                    tension: 0.2, 
-                    fill: true
-                }]
-            },
+            data: { labels: [], datasets: [{ label: 'Speed', data: [], borderColor: '#6366f1', backgroundColor: gradSpeed, borderWidth: 2, tension: 0.4, fill: true }] },
             options: commonOptions
         });
 
-        // Initialize Growth Chart (Emerald)
         const ctxGrowth = document.getElementById('growthChart').getContext('2d');
         const gradGrowth = ctxGrowth.createLinearGradient(0, 0, 0, 400);
         gradGrowth.addColorStop(0, 'rgba(16, 185, 129, 0.5)'); 
         gradGrowth.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
-
         growthChart = new Chart(ctxGrowth, {
             type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Highest Prime',
-                    data: [],
-                    borderColor: '#10b981',
-                    backgroundColor: gradGrowth,
-                    borderWidth: 2,
-                    tension: 0.2, 
-                    fill: true
-                }]
-            },
+            data: { labels: [], datasets: [{ label: 'Highest Prime', data: [], borderColor: '#10b981', backgroundColor: gradGrowth, borderWidth: 2, tension: 0.4, fill: true }] },
             options: commonOptions
         });
 
-        // --- WORKER BLOB ---
+        // --- OPTIMIZED EXPONENTIAL WORKER ---
         const workerCode = `
             self.onmessage = function(e) {
                 if (e.data.command === 'start') {
-                    let currentNum = e.data.id + 1; 
+                    // Start at a reasonably high number to avoid trivial primes
+                    let currentNum = 1000 + e.data.id; 
                     let stride = e.data.stride;
                     let count = 0;
                     let maxFound = 0;
+                    let lastReport = Date.now();
 
                     const isPrime = (num) => {
-                        if (num < 2) return false;
-                        if (num === 2) return true;
                         if (num % 2 === 0) return false;
                         for (let i = 3, s = Math.sqrt(num); i <= s; i += 2) {
                             if (num % i === 0) return false;
@@ -340,25 +226,37 @@
                     };
 
                     setInterval(() => {
-                        for(let i=0; i<500; i++) {
+                         // Batch size
+                         for(let k=0; k<2000; k++) { 
                             if(isPrime(currentNum)) {
                                 count++;
                                 maxFound = currentNum;
                             }
-                            currentNum += stride;
-                        }
-                        self.postMessage({ count, highest: maxFound });
-                    }, 5); 
+                            
+                            // --- THE MAGIC ---
+                            // Instead of linear addition (currentNum += stride),
+                            // We add a tiny compound growth factor.
+                            // This makes currentNum explode in size over time.
+                            // As currentNum grows, isPrime() gets slower (Velocity drops).
+                            // As currentNum grows, MaxFound gets larger (Value rises).
+                            
+                            let growth = Math.floor(currentNum * 0.0000005); 
+                            currentNum += (stride + growth);
+                         }
+                         
+                         const now = Date.now();
+                         if (now - lastReport > 250) {
+                             self.postMessage({ count, highest: maxFound });
+                             lastReport = now;
+                         }
+                    }, 0); 
                 }
             };
         `;
         const blob = new Blob([workerCode], { type: "application/javascript" });
         const workerUrl = URL.createObjectURL(blob);
 
-        // --- UI FUNCTIONS ---
-        function updateSliderUI() {
-            document.getElementById('coreDisplay').innerText = slider.value;
-        }
+        function updateSliderUI() { document.getElementById('coreDisplay').innerText = slider.value; }
 
         function toggleState() {
             const btn = document.getElementById('mainBtn');
@@ -382,12 +280,7 @@
             }
         }
 
-        function handleThrottleChange() {
-            if (state === 'RUNNING') {
-                stopWorkers(false);
-                startWorkers();
-            }
-        }
+        function handleThrottleChange() { if (state === 'RUNNING') { stopWorkers(false); startWorkers(); } }
 
         function startWorkers() {
             const coreCount = parseInt(slider.value);
@@ -398,12 +291,13 @@
                 const w = new Worker(workerUrl);
                 w.onmessage = (e) => {
                     window.activeWorkerStats[i] = e.data.count;
-                    if(e.data.highest > highestPrimeAllTime) {
-                        highestPrimeAllTime = e.data.highest;
-                        document.getElementById('highestPrime').innerText = highestPrimeAllTime.toLocaleString();
-                    }
+                    if(e.data.highest > highestPrimeAllTime) highestPrimeAllTime = e.data.highest;
+                    
+                    // Sum up total from all workers
                     currentSessionTotal = window.activeWorkerStats.reduce((a, b) => a + b, 0);
+                    
                     document.getElementById('totalPrimes').innerText = (totalPrimesBanked + currentSessionTotal).toLocaleString();
+                    document.getElementById('highestPrime').innerText = highestPrimeAllTime.toLocaleString();
                 };
                 w.postMessage({ command: 'start', id: i, stride: coreCount });
                 workers.push(w);
@@ -431,42 +325,42 @@
             highestPrimeAllTime = 0;
             lastGlobalTotal = 0;
             
-            speedChart.data.labels = [];
-            speedChart.data.datasets[0].data = [];
-            speedChart.update();
-
-            growthChart.data.labels = [];
-            growthChart.data.datasets[0].data = [];
-            growthChart.update();
+            // Clear charts
+            speedChart.data.labels = []; speedChart.data.datasets[0].data = []; speedChart.update();
+            growthChart.data.labels = []; growthChart.data.datasets[0].data = []; growthChart.update();
         }
 
-        // --- HIGH SPEED METRICS LOOP (100ms) ---
+        // --- 1 SECOND METRICS LOOP ---
         setInterval(() => {
-            if (state !== 'RUNNING') {
-                document.getElementById('speed').innerText = "0";
-                return;
-            }
+            if (state !== 'RUNNING') return;
+
             const currentGlobal = totalPrimesBanked + currentSessionTotal;
-            
             const delta = currentGlobal - lastGlobalTotal;
             lastGlobalTotal = currentGlobal;
 
-            const velocity = delta * 10; // Project to "Per Second"
+            document.getElementById('speed').innerText = delta.toLocaleString();
 
-            document.getElementById('speed').innerText = velocity.toLocaleString();
-
-            const now = ""; 
+            const now = new Date().toLocaleTimeString();
             
+            // Speed Chart
+            if (speedChart.data.labels.length > MAX_DATA_POINTS) {
+                speedChart.data.labels.shift();
+                speedChart.data.datasets[0].data.shift();
+            }
             speedChart.data.labels.push(now);
-            speedChart.data.datasets[0].data.push(velocity);
+            speedChart.data.datasets[0].data.push(delta);
+            speedChart.update();
             
+            // Growth Chart
+            if (growthChart.data.labels.length > MAX_DATA_POINTS) {
+                growthChart.data.labels.shift();
+                growthChart.data.datasets[0].data.shift();
+            }
             growthChart.data.labels.push(now);
             growthChart.data.datasets[0].data.push(highestPrimeAllTime);
-
-            speedChart.update();
             growthChart.update();
 
-        }, 100); 
+        }, 1000); 
     </script>
 </body>
 </html>
